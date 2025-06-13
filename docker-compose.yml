@@ -1,0 +1,45 @@
+version: '3.8' # กำหนดเวอร์ชันของ Docker Compose
+
+services:
+  redis:
+    image: redis:7.0-alpine # ใช้ Redis เวอร์ชัน 7.0 พร้อม base image แบบ alpine ที่มีขนาดเล็ก
+    container_name: redis-server # กำหนดชื่อของ Container
+    ports:
+      - '6379:6379' # Map port 6379 ของโฮสต์ไปยัง port 6379 ของ Redis Container
+    volumes:
+      - redis_data:/data # ใช้ Docker Volume สำหรับข้อมูล Redis เพื่อให้ข้อมูลคงอยู่แม้ Container จะถูกลบ/สร้างใหม่
+      - ./redis.conf:/usr/local/etc/redis/redis.conf:ro # Mount ไฟล์คอนฟิก Redis แบบ Read-Only
+      - redis_logs:/var/log/redis # สำหรับเก็บ log ของ Redis
+    command: redis-server /usr/local/etc/redis/redis.conf # สั่งให้ Redis ใช้ไฟล์คอนฟิกที่ Mount เข้าไป
+    # ไม่ต้องใช้ environment สำหรับ REDIS_PASSWORD ตรงนี้แล้ว เพราะตั้งใน redis.conf แล้ว
+    restart: always # กำหนดให้ Container รีสตาร์ทอัตโนมัติหากหยุดทำงาน (เช่น เกิดข้อผิดพลาด, รีสตาร์ท Docker Daemon)
+    healthcheck: # เพิ่ม Health Check เพื่อให้ RedisInsight รอจนกว่า Redis จะพร้อม
+      test: ['CMD', 'redis-cli', '--raw', 'AUTH', 'P@ssw0rd', 'PING']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  redisinsight:
+    image: redis/redisinsight:latest # ใช้ RedisInsight เวอร์ชันล่าสุด
+    container_name: my-redis-insight # กำหนดชื่อของ Container
+    ports:
+      - '5540:5540' # Map port 5540  ของโฮสต์ไปยัง port 5540  ของ RedisInsight Container (สำหรับเข้าถึง GUI)
+    depends_on: # กำหนดให้ RedisInsight รอจนกว่า Redis service จะพร้อม
+      redis:
+        condition: service_healthy # รอให้ Redis server ผ่าน Health Check ก่อน
+    environment:
+      # สำหรับ RedisInsight ที่รันใน Docker network เดียวกัน
+      # มันจะสามารถเชื่อมต่อกับ Redis service ด้วยชื่อ service 'redis' ได้เลย
+      # ไม่จำเป็นต้องใช้ IP Address ของ Host
+      # REDISINSIGHT_DATABASE_URL: "redis://redis:6379?password=dev@123!" # อาจใช้สำหรับการตั้งค่าเริ่มต้นอัตโนมัติ (บางเวอร์ชันอาจรองรับ)
+      # หรือจะเชื่อมต่อแบบ Manual ใน GUI ก็ได้
+      LOG_LEVEL: info # ตั้งค่า Log Level สำหรับ RedisInsight
+    networks:
+      - default # RedisInsight จะอยู่ใน network เดียวกันกับ Redis service โดย default ของ Docker Compose
+
+volumes:
+  redis_data: # กำหนด Docker Volume ที่ชื่อ redis_data สำหรับข้อมูล Redis
+    driver: local
+  redis_logs: # กำหนด Docker Volume ที่ชื่อ redis_logs สำหรับ log ของ Redis
+    driver: local

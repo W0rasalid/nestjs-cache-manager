@@ -1,0 +1,60 @@
+# --- Persistence Settings ---
+# AOF (Append Only File) persistence is generally more durable.
+# It logs every write operation received by the server.
+appendonly yes
+# The fsync policy can be always, everysec, or no.
+# 'everysec' is a good balance between durability and performance.
+appendfsync everysec
+
+# RDB (Redis Database) persistence creates point-in-time snapshots of your dataset.
+# Save the DB on disk (RDB persistence)
+# You can uncomment and configure these lines if you also want RDB persistence.
+# For many Docker setups, AOF is sufficient, but RDB offers quick restart times.
+# save 900 1    # Save if 1 key change in 900 seconds (15 minutes)
+# save 300 10   # Save if 10 keys change in 300 seconds (5 minutes)
+# save 60 10000 # Save if 10000 keys change in 60 seconds (1 minute)
+
+# Directory where Redis will save persistent data (RDB and AOF files)
+# IMPORTANT: This must match the volume mount point inside the container!
+dir /data 
+
+# --- Security Settings ---
+# Require a password to connect to Redis.
+# Uncomment and change to a strong password for production.
+# This setting is crucial for security.
+requirepass dev@123! # เปลี่ยนเป็นรหัสผ่านที่แข็งแกร่งของคุณสำหรับ Production!
+
+# Bind to specific IP addresses.
+# For Docker containers in the same network, Redis needs to bind to 0.0.0.0
+# so that other containers (like RedisInsight or your application) can access it.
+# If you only allow connections from localhost, other containers won't reach it.
+bind 0.0.0.0 
+
+# --- Memory Settings ---
+# Max memory limit for Redis. When the limit is reached, Redis will start removing keys.
+maxmemory 512mb
+# Policy for eviction when maxmemory is reached (e.g., volatile-lru, allkeys-lru, noeviction)
+# 'allkeys-lru' is a common choice for a general-purpose cache.
+# 'noeviction' will return errors on writes when memory is full.
+maxmemory-policy allkeys-lru
+
+# --- Logging ---
+# Specify the log file name. If not set, Redis logs to standard output.
+# We explicitly set a log file path here to direct logs to a specific file within the container.
+# This file will then be mounted to a Docker volume for persistence on the host.
+logfile /var/log/redis/redis.log
+
+# Set the log level. Possible values: debug, verbose, notice, warning.
+# 'notice' is a good balance for general operations, 'warning' for less verbose logs.
+loglevel notice
+
+# --- General Settings ---
+# Set the number of databases. Default is 16.
+databases 16
+
+# The amount of time that Redis will wait for the client to close the connection
+# if the client is idle (in seconds). A value of 0 means no timeout.
+timeout 0
+
+# Set the TCP keepalive. This is useful for detecting dead peers.
+tcp-keepalive 300
